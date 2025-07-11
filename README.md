@@ -1,13 +1,24 @@
-# Sample Hardhat Project
+# 📝 LetsDo - Blockchain Based ToDo Application
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a Hardhat Ignition module that deploys that contract.
+A decentralized task manager built with **HTML, CSS, JavaScript, Solidity**, and **Node.js** (backend).  
+This project allows users to manage tasks securely on the Ethereum blockchain.
 
-Try running some of the following tasks:
+---
 
-```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat ignition deploy ./ignition/modules/Lock.js
-```
+## 🚀 Tech Stack
+
+- **Frontend**: HTML, CSS, JavaScript  
+- **Smart Contracts**: Solidity  
+- **Blockchain Network**: Sepolia (Alchemy)  
+- **Backend**: Node.js  
+- **Other Tools**: Hardhat, Ethers.js, Etherscan API
+
+---
+
+## ⚙️ Getting Started
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/w3rew0lf11/LetsDo.git
+cd LetsDo
