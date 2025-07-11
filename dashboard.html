@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Let'sDO - Task Dashboard</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Gochi+Hand&family=Patrick+Hand&family=Caveat:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --notebook-color: #f9f3d9;
+            --spiral-color: #e0d5b8;
+            --line-color: #e8e0c0;
+            --text-color: #333;
+            --highlight-color: #ff6b6b;
+            --shadow-color: rgba(0, 0, 0, 0.2);
+            --ink-color: #1a1a1a;
+            --important-color: #ffcc00;
+            --paper-texture: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 800 800"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/><feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 0.2 0"/></filter><rect width="100%" height="100%" filter="url(%23noise)"/></svg>');
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Patrick Hand', cursive;
+            background-color: #f5f5f5;
+            color: var(--text-color);
+            overflow-x: hidden;
+            background-image: url('https://images.unsplash.com/photo-1546521343-4eb2c01aa44b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80');
+            background-size: cover;
+            background-attachment: fixed;
+            background-position: center;
+            position: relative;
+            line-height: 1.6;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.7);
+            z-index: -1;
+        }
+
+        .notebook-container {
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 0;
+        }
+
+        .notebook {
+            width: 90%;
+            max-width: 1200px;
+            min-height: 90vh;
+            background-color: var(--notebook-color);
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3);
+            position: relative;
+            padding: 40px;
+            border-radius: 5px;
+            overflow: hidden;
+            background-color: rgba(249, 243, 217, 0.98);
+            background-image: var(--paper-texture);
+        }
+
+        /* Spiral binding */
+        .notebook::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 40px;
+            background:
+                linear-gradient(to right,
+                    var(--spiral-color) 0%,
+                    var(--spiral-color) 30%,
+                    transparent 30%,
+                    transparent 100%),
+                linear-gradient(to bottom,
+                    #d4c9a8 0%,
+                    #e8dfc0 10%,
+                    #d4c9a8 20%,
+                    #e8dfc0 30%,
+                    #d4c9a8 40%,
+                    #e8dfc0 50%,
+                    #d4c9a8 60%,
+                    #e8dfc0 70%,
+                    #d4c9a8 80%,
+                    #e8dfc0 90%,
+                    #d4c9a8 100%);
+            background-size: 5px 5px, 100% 100%;
+            background-repeat: repeat-y, no-repeat;
+            z-index: 2;
+        }
+
+        /* Notebook lines - applied to the entire notebook */
+        .notebook::after {
+            content: "";
+            position: absolute;
+            left: 40px;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom,
+                    transparent 0%,
+                    transparent 44px,
+                    var(--line-color) 44px,
+                    var(--line-color) 45px);
+            background-size: 100% 45px;
+            z-index: 1;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--line-color);
+            position: relative;
+            z-index: 3;
+        }
+
+        .logo {
+            font-family: 'Gochi Hand', cursive;
+            font-size: 3rem;
+            color: var(--highlight-color);
+            text-shadow: 3px 3px 0 var(--shadow-color);
+        }
+
+        .wallet-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            position: relative;
+            z-index: 3;
+        }
+
+        .wallet-address {
+            background-color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.1);
+            font-size: 0.9rem;
+        }
+
+        .btn {
+            padding: 8px 20px;
+            background-color: var(--highlight-color);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-family: 'Patrick Hand', cursive;
+            font-size: 1.1rem;
+            cursor: pointer;
+            box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 3;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 5px 5px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 2px solid var(--highlight-color);
+            color: var(--highlight-color);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 30px;
+            min-height: 70vh;
+            position: relative;
+            z-index: 2;
+        }
+
+        .sidebar {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.1);
+            position: relative;
+            z-index: 3;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+        }
+
+        .sidebar-menu li {
+            margin-bottom: 15px;
+        }
+
+        .sidebar-menu a {
+            text-decoration: none;
+            color: var(--text-color);
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .sidebar-menu a:hover,
+        .sidebar-menu a.active {
+            background-color: var(--highlight-color);
+            color: white;
+        }
+
+        .main-content {
+            position: relative;
+            padding: 20px;
+        }
+
+        /* Content containers with white background to cover lines */
+        .task-list,
+        .stats-cards,
+        .stat-card,
+        .add-task-form,
+        .modal-content {
+            background-color: white;
+            position: relative;
+            z-index: 3;
+        }
+
+        .task-list {
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .task-header h2 {
+            font-size: 1.8rem;
+            color: var(--highlight-color);
+        }
+
+        .task-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 15px;
+            border-bottom: 1px solid var(--line-color);
+            transition: all 0.3s ease;
+            position: relative;
+            background-color: white;
+        }
+
+
+        .task-item:hover {
+            background-color: rgba(255, 107, 107, 0.05);
+        }
+
+        .task-checkbox {
+            margin-right: 15px;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            margin-top: 3px;
+        }
+
+        .task-content {
+            flex-grow: 1;
+        }
+
+        .task-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .task-description {
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .task-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .task-status {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .status-pending {
+            background-color: #ffeeba;
+            color: #856404;
+        }
+
+        .status-completed {
+            background-color: #c3e6cb;
+            color: #155724;
+        }
+
+        .task-completed .task-title,
+        .task-completed .task-description {
+            text-decoration: line-through;
+            color: #aaa;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .task-actions button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-color);
+            transition: all 0.3s ease;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .task-actions button:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+            color: var(--highlight-color);
+        }
+
+        .task-actions .important-btn.active {
+            color: var(--important-color);
+        }
+
+        .add-task-form {
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 15px;
+            border: 2px solid var(--line-color);
+            border-radius: 8px;
+            font-family: 'Patrick Hand', cursive;
+            font-size: 1rem;
+        }
+
+        textarea.form-control {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: var(--highlight-color);
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(3px);
+        }
+
+        .modal-content {
+            background-color: var(--notebook-color);
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+            background-image: var(--paper-texture);
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-color);
+            transition: all 0.3s ease;
+        }
+
+        .close-modal:hover {
+            color: var(--highlight-color);
+            transform: rotate(90deg);
+        }
+
+        /* Responsive styles */
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                display: none;
+                /* Will show in mobile menu */
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="notebook-container">
+        <div class="notebook">
+            <div class="dashboard-header">
+                <div class="logo">Let's<span>DO</span></div>
+                <div class="wallet-info">
+                    <div class="wallet-address" id="wallet-address-display">
+                        Connected: <span id="wallet-address-span"></span>
+                    </div>
+                    <button class="btn btn-outline" id="disconnect-btn">Disconnect</button>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="sidebar">
+                    <ul class="sidebar-menu">
+                        <li><a href="#" class="active" data-filter="all"><i class="fas fa-tasks"></i> All Tasks</a></li>
+                        <li><a href="#" data-filter="pending"><i class="fas fa-clock"></i> Pending</a></li>
+                        <li><a href="#" data-filter="completed"><i class="fas fa-check-circle"></i> Completed</a></li>
+                    </ul>
+                </div>
+
+                <div class="main-content">
+                    <div class="stats-cards">
+                        <div class="stat-card">
+                            <h3>Total Tasks</h3>
+                            <div class="stat-value" id="total-tasks">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Completed</h3>
+                            <div class="stat-value" id="completed-tasks">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Important</h3>
+                            <div class="stat-value" id="important-tasks">0</div>
+                        </div>
+                    </div>
+
+                    <div class="task-list">
+                        <div class="task-header">
+                            <h2 id="task-list-title">All Tasks</h2>
+                            <button class="btn" id="add-task-btn"><i class="fas fa-plus"></i> Add Task</button>
+                        </div>
+
+                        <div id="tasks-container">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Task Modal -->
+    <div class="modal" id="task-modal">
+        <div class="modal-content">
+            <span class="close-modal" id="close-modal">&times;</span>
+            <h2>Add New Task</h2>
+            <form id="task-form">
+                <div class="form-group">
+                    <label for="task-name">Task Name</label>
+                    <input type="text" id="task-name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="task-description">Description</label>
+                    <textarea id="task-description" class="form-control"></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" id="cancel-task">Cancel</button>
+                    <button type="submit" class="btn">Save Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="public/dashboard.js"></script>
+</body>
+
+</html>

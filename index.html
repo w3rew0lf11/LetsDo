@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Let'sDO - Your Personal Task Manager</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Gochi+Hand&family=Patrick+Hand&family=Caveat:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --notebook-color: #f9f3d9;
+            --spiral-color: #e0d5b8;
+            --line-color: #e8e0c0;
+            --text-color: #333;
+            --highlight-color: #ff6b6b;
+            --shadow-color: rgba(0, 0, 0, 0.2);
+            --ink-color: #1a1a1a;
+            --paper-texture: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 800 800"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/><feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 0.2 0"/></filter><rect width="100%" height="100%" filter="url(%23noise)"/></svg>');
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Patrick Hand', cursive;
+            background-color: #f5f5f5;
+            color: var(--text-color);
+            overflow-x: hidden;
+            background-image: url('https://images.unsplash.com/photo-1546521343-4eb2c01aa44b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80');
+            background-size: cover;
+            background-attachment: fixed;
+            background-position: center;
+            position: relative;
+            line-height: 1.6;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.7);
+            z-index: -1;
+        }
+
+        .notebook-container {
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 0;
+        }
+
+        .notebook {
+            width: 90%;
+            max-width: 1000px;
+            min-height: 90vh;
+            background-color: var(--notebook-color);
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3);
+            position: relative;
+            padding: 40px;
+            border-radius: 5px;
+            overflow: hidden;
+            background-color: rgba(249, 243, 217, 0.98);
+            background-image: var(--paper-texture);
+            transition: box-shadow 0.3s ease;
+        }
+
+        .notebook:hover {
+            box-shadow: 0 15px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .notebook::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 40px;
+            background:
+                linear-gradient(to right,
+                    var(--spiral-color) 0%,
+                    var(--spiral-color) 30%,
+                    transparent 30%,
+                    transparent 100%),
+                linear-gradient(to bottom,
+                    #d4c9a8 0%,
+                    #e8dfc0 10%,
+                    #d4c9a8 20%,
+                    #e8dfc0 30%,
+                    #d4c9a8 40%,
+                    #e8dfc0 50%,
+                    #d4c9a8 60%,
+                    #e8dfc0 70%,
+                    #d4c9a8 80%,
+                    #e8dfc0 90%,
+                    #d4c9a8 100%);
+            background-size: 5px 5px, 100% 100%;
+            background-repeat: repeat-y, no-repeat;
+            z-index: 2;
+        }
+
+        /* Page styles with lines positioned behind content */
+        .page {
+            position: absolute;
+            top: 40px;
+            left: 40px;
+            right: 40px;
+            min-height: calc(90vh - 80px);
+            display: none;
+            background-color: transparent;
+            padding: 20px 20px 20px 40px;
+            transform-style: preserve-3d;
+            backface-visibility: hidden;
+        }
+
+        .page-content {
+            position: relative;
+            z-index: 3;
+            /* Content above the lines */
+            height: 100%;
+        }
+
+        .page::before {
+            content: "";
+            position: absolute;
+            left: 40px;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom,
+                    transparent 0%,
+                    transparent 44px,
+                    var(--line-color) 44px,
+                    var(--line-color) 45px);
+            background-size: 100% 45px;
+            z-index: 1;
+            /* Lines behind the content */
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        #main-page {
+            display: block;
+            position: relative;
+        }
+
+        /* Page flip animations */
+        .flipping-out {
+            animation: flipPageOut 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            transform-origin: left center;
+            z-index: 2;
+        }
+
+        .flipping-in {
+            animation: flipPageIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            transform-origin: right center;
+            z-index: 1;
+        }
+
+        @keyframes flipPageOut {
+            0% {
+                transform: perspective(1200px) rotateY(0deg);
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+
+            100% {
+                transform: perspective(1200px) rotateY(-180deg);
+                opacity: 0;
+            }
+        }
+
+        @keyframes flipPageIn {
+            0% {
+                transform: perspective(1200px) rotateY(180deg);
+                opacity: 0;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+
+            100% {
+                transform: perspective(1200px) rotateY(0deg);
+                opacity: 1;
+            }
+        }
+
+        .notebook-maintain-size {
+            height: auto !important;
+            min-height: 90vh !important;
+        }
+
+        .page::after {
+            content: "";
+            position: absolute;
+            left: 40px;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom,
+                    transparent 0%,
+                    transparent 44px,
+                    var(--line-color) 44px,
+                    var(--line-color) 45px);
+            background-size: 100% 45px;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        /* Ink-like text effect */
+        h1,
+        h2,
+        h3,
+        p,
+        a,
+        li {
+            text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.1);
+            color: var(--ink-color);
+        }
+
+        /* Header styles */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            position: relative;
+            z-index: 4;
+            animation: slideDown 0.6s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .logo {
+            font-family: 'Gochi Hand', cursive;
+            font-size: 3.5rem;
+            color: var(--highlight-color);
+            text-shadow: 3px 3px 0 var(--shadow-color);
+            position: relative;
+            display: inline-block;
+        }
+
+        .logo span {
+            color: var(--text-color);
+        }
+
+        .logo::after {
+            content: "";
+            position: absolute;
+            bottom: 5px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: var(--highlight-color);
+            transform: scaleX(0);
+            transform-origin: right;
+            transition: transform 0.3s ease;
+        }
+
+        .logo:hover::after {
+            transform: scaleX(1);
+            transform-origin: left;
+        }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+        }
+
+        nav ul li {
+            margin-left: 25px;
+            position: relative;
+        }
+
+        nav ul li a {
+            text-decoration: none;
+            color: var(--text-color);
+            font-size: 1.3rem;
+            position: relative;
+            padding-bottom: 5px;
+            transition: all 0.3s ease;
+        }
+
+        nav ul li a::before {
+            content: "";
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            bottom: 0;
+            left: 0;
+            background-color: var(--highlight-color);
+            visibility: hidden;
+            transform: scaleX(0);
+            transition: all 0.3s ease-in-out;
+        }
+
+        nav ul li a:hover::before {
+            visibility: visible;
+            transform: scaleX(1);
+        }
+
+        nav ul li a:hover {
+            color: var(--highlight-color);
+        }
+
+        /* Hero section */
+        .hero {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 50px;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hero-content {
+            flex: 1;
+            padding-right: 40px;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            line-height: 1.2;
+            font-weight: 700;
+            position: relative;
+            display: inline-block;
+        }
+
+        .hero h1::after {
+            content: "";
+            position: absolute;
+            bottom: 5px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: var(--highlight-color);
+        }
+
+        .hero p {
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .hero-image {
+            flex: 1;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero-image img {
+            max-width: 100%;
+            height: auto;
+            filter: drop-shadow(8px 8px 10px rgba(0, 0, 0, 0.2));
+            transition: transform 0.5s ease;
+        }
+
+        .hero-image:hover img {
+            transform: translateY(-5px) rotate(2deg);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-block;
+            padding: 12px 25px;
+            background-color: var(--highlight-color);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-family: 'Patrick Hand', cursive;
+            font-size: 1.3rem;
+            cursor: pointer;
+            text-decoration: none;
+            margin-right: 15px;
+            transition: all 0.3s ease;
+            box-shadow: 4px 4px 0 var(--shadow-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: 0.5s;
+        }
+
+        .btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 6px 6px 0 var(--shadow-color);
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 2px solid var(--highlight-color);
+            color: var(--highlight-color);
+            box-shadow: none;
+        }
+
+        .btn-outline:hover {
+            background-color: var(--highlight-color);
+            color: white;
+        }
+
+        /* Wallet Connection Styles */
+        .wallet-options {
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .wallet-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            background-color: white;
+            border: 2px solid #f6851b;
+            border-radius: 8px;
+            font-family: 'Patrick Hand', cursive;
+            font-size: 1.3rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .wallet-btn:hover {
+            background-color: #fef6e9;
+            transform: translateY(-3px);
+        }
+
+        .wallet-btn img {
+            width: 30px;
+            height: 30px;
+            margin-right: 15px;
+        }
+
+        .wallet-status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: rgba(255, 255, 255, 0.8);
+        }
+
+        .wallet-address {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: rgba(246, 133, 27, 0.1);
+            word-break: break-all;
+        }
+
+        #connected-address {
+            font-weight: bold;
+            color: #f6851b;
+        }
+
+        .disconnect-btn {
+            margin-top: 15px;
+        }
+
+        .btn.connected {
+            background-color: #4caf50;
+            color: white;
+        }
+
+        .btn.connected:hover {
+            background-color: #3e8e41;
+            transform: none;
+            box-shadow: 4px 4px 0 var(--shadow-color);
+        }
+
+        .error {
+            color: #f44336;
+        }
+
+        /* Features section */
+        .features {
+            margin: 70px 0;
+            animation: fadeIn 1s ease-out;
+        }
+
+        .features h2 {
+            text-align: center;
+            font-size: 2.8rem;
+            margin-bottom: 50px;
+            color: var(--highlight-color);
+            position: relative;
+            display: inline-block;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .features h2::after {
+            content: "";
+            position: absolute;
+            bottom: 5px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: var(--highlight-color);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 40px;
+        }
+
+        .feature-card {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background-color: var(--highlight-color);
+            transition: all 0.4s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px) rotate(1deg);
+            box-shadow: 10px 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .feature-card:hover::before {
+            width: 100%;
+            opacity: 0.1;
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            color: var(--highlight-color);
+            margin-bottom: 20px;
+            transition: all 0.4s ease;
+        }
+
+        .feature-card:hover .feature-icon {
+            transform: scale(1.1) rotate(10deg);
+        }
+
+        .feature-card h3 {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            position: relative;
+            display: inline-block;
+        }
+
+        .feature-card h3::after {
+            content: "";
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 50px;
+            height: 2px;
+            background-color: var(--highlight-color);
+        }
+
+        .feature-card p {
+            font-size: 1.2rem;
+            line-height: 1.6;
+        }
+
+        /* About section */
+        .about {
+            margin: 70px 0;
+            display: none;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        .about h2 {
+            font-size: 2.8rem;
+            margin-bottom: 40px;
+            color: var(--highlight-color);
+            position: relative;
+            display: inline-block;
+        }
+
+        .about h2::after {
+            content: "";
+            position: absolute;
+            bottom: 5px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: var(--highlight-color);
+        }
+
+        .about p {
+            font-size: 1.3rem;
+            line-height: 1.8;
+            margin-bottom: 25px;
+            position: relative;
+            padding-left: 20px;
+        }
+
+        .about p::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--highlight-color);
+        }
+
+        .about h3 {
+            font-size: 2rem;
+            margin: 40px 0 20px;
+            color: var(--highlight-color);
+        }
+
+        /* Contact section */
+        .contact {
+            margin: 70px 0;
+            display: none;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        .contact h2 {
+            font-size: 2.8rem;
+            margin-bottom: 40px;
+            color: var(--highlight-color);
+            position: relative;
+            display: inline-block;
+        }
+
+        .contact h2::after {
+            content: "";
+            position: absolute;
+            bottom: 5px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: var(--highlight-color);
+        }
+
+        .contact p {
+            font-size: 1.3rem;
+            margin-bottom: 30px;
+        }
+
+        .contact-form {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 1.3rem;
+            color: var(--text-color);
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-family: 'Patrick Hand', cursive;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            background-color: rgba(255, 255, 255, 0.8);
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            border-color: var(--highlight-color);
+            box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.2);
+            outline: none;
+        }
+
+        .form-group textarea {
+            min-height: 180px;
+            resize: vertical;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            margin-top: 70px;
+            padding-top: 30px;
+            border-top: 2px solid var(--line-color);
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .social-links {
+            margin-bottom: 25px;
+        }
+
+        .social-links a {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 50px;
+            height: 50px;
+            background-color: white;
+            color: var(--text-color);
+            font-size: 1.5rem;
+            margin: 0 10px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .social-links a:hover {
+            color: white;
+            background-color: var(--highlight-color);
+            transform: translateY(-5px);
+            box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        footer p {
+            font-size: 1.1rem;
+            color: var(--text-color);
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(3px);
+        }
+
+        .modal-content {
+            background-color: var(--notebook-color);
+            padding: 40px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 450px;
+            position: relative;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+            animation: modalAppear 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            background-image: var(--paper-texture);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        @keyframes modalAppear {
+            from {
+                transform: scale(0.8) translateY(50px);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 1.8rem;
+            cursor: pointer;
+            color: var(--text-color);
+            transition: all 0.3s ease;
+        }
+
+        .close-modal:hover {
+            color: var(--highlight-color);
+            transform: rotate(90deg);
+        }
+
+        .modal h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--highlight-color);
+            font-size: 2.2rem;
+            position: relative;
+        }
+
+        .modal h2::after {
+            content: "";
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 3px;
+            background-color: var(--highlight-color);
+        }
+
+        /* Pen scribble decoration */
+        .pen-scribble {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            opacity: 0.1;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .scribble-1 {
+            top: 10%;
+            right: 5%;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><path d="M20,50 Q50,20 80,50 T140,30 T180,70" fill="none" stroke="%23ff6b6b" stroke-width="3" stroke-linecap="round"/></svg>') no-repeat;
+        }
+
+        .scribble-2 {
+            bottom: 15%;
+            left: 8%;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><path d="M30,150 Q60,120 90,150 T150,130 T190,170" fill="none" stroke="%23ff6b6b" stroke-width="3" stroke-linecap="round"/></svg>') no-repeat;
+        }
+
+        /* Responsive styles */
+        @media (max-width: 992px) {
+            .hero h1 {
+                font-size: 3rem;
+            }
+
+            .hero p {
+                font-size: 1.3rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .notebook {
+                width: 95%;
+                padding: 30px 20px 30px 30px;
+            }
+
+            .notebook::before {
+                width: 30px;
+            }
+
+            .page {
+                padding: 15px 15px 15px 30px;
+            }
+
+            .page::after {
+                left: 30px;
+            }
+
+            .hero {
+                flex-direction: column;
+            }
+
+            .hero-content {
+                padding-right: 0;
+                margin-bottom: 40px;
+                text-align: center;
+            }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero-buttons {
+                display: flex;
+                justify-content: center;
+            }
+
+            nav ul {
+                flex-direction: column;
+                align-items: flex-end;
+            }
+
+            nav ul li {
+                margin-left: 0;
+                margin-bottom: 15px;
+            }
+
+            .logo {
+                font-size: 2.5rem;
+            }
+
+            .features h2,
+            .about h2,
+            .contact h2 {
+                font-size: 2.2rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .notebook {
+                padding: 25px 15px 25px 25px;
+            }
+
+            .hero h1 {
+                font-size: 2.2rem;
+            }
+
+            .hero p {
+                font-size: 1.1rem;
+            }
+
+            .btn {
+                padding: 10px 20px;
+                font-size: 1.1rem;
+                margin-right: 10px;
+                margin-bottom: 10px;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-content {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="notebook-container">
+        <div class="notebook">
+            <!-- Pen scribble decorations -->
+            <div class="pen-scribble scribble-1"></div>
+            <div class="pen-scribble scribble-2"></div>
+
+            <div class="page" id="main-page">
+                <div class="page-content">
+                    <header>
+                        <div class="logo">Let's<span>DO</span></div>
+                        <nav>
+                            <ul>
+                                <li><a href="#" class="nav-link" data-page="home">Home</a></li>
+                                <li><a href="#" class="nav-link" data-page="about">About</a></li>
+                                <li><a href="#" class="nav-link" data-page="contact">Contact</a></li>
+                                <li><a href="#" class="btn btn-outline" id="login-btn" >Login</a></li>
+                                <!-- <li><a href="#" class="btn" id="getstarted-btn">Get Started</a></li> -->
+                            </ul>
+                        </nav>
+                    </header>
+
+                    <section class="hero">
+                        <div class="hero-content">
+                            <h1>Organize Your Life with Let'sDO</h1>
+                            <p>The simple, beautiful way to manage your tasks and boost your productivity. Jot down what
+                                you need to do and let Let'sDO help you get it done.</p>
+                            <!-- <div class="hero-buttons">
+                                <a href="#" class="btn" id="hero-getstarted">Get Started</a>
+                                <a href="#" class="btn btn-outline" id="hero-login">Login</a>
+                            </div> -->
+                        </div>
+                        <div class="hero-image">
+                            <img src="https://illustrations.popsy.co/amber/digital-nomad.svg"
+                                alt="Person organizing tasks">
+                        </div>
+                    </section>
+
+                    <section class="features">
+                        <h2>Why Choose Let'sDO?</h2>
+                        <div class="features-grid">
+                            <div class="feature-card">
+                                <div class="feature-icon">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <h3>Simple Interface</h3>
+                                <p>Clean, intuitive design that makes managing tasks a breeze. No complicated menus or
+                                    confusing options.</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">
+                                    <i class="fas fa-bell"></i>
+                                </div>
+                                <h3>Smart Reminders</h3>
+                                <p>Never miss a deadline with customizable reminders that keep you on track.</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">
+                                    <i class="fas fa-mobile-alt"></i>
+                                </div>
+                                <h3>Access Anywhere</h3>
+                                <p>Access your tasks from any device, anywhere. Your lists sync automatically.</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <footer>
+                        <div class="social-links">
+                            <a href="#"><i class="fab fa-twitter"></i></a>
+                            <a href="#"><i class="fab fa-facebook"></i></a>
+                            <a href="#"><i class="fab fa-instagram"></i></a>
+                            <a href="#"><i class="fab fa-linkedin"></i></a>
+                        </div>
+                        <p>&copy; 2023 Let'sDO. All rights reserved.</p>
+                    </footer>
+                </div>
+            </div>
+
+            <!-- About Page (hidden initially) -->
+            <div class="page" id="about-page" style="display: none;">
+                <div class="page-content">
+                    <header>
+                        <div class="logo">Let's<span>DO</span></div>
+                        <nav>
+                            <ul>
+                                <li><a href="#" class="nav-link" data-page="home">Home</a></li>
+                                <li><a href="#" class="nav-link" data-page="about">About</a></li>
+                                <li><a href="#" class="nav-link" data-page="contact">Contact</a></li>
+                                <li><a href="#" class="btn btn-outline" id="about-login-btn">Login</a></li>
+                                <!-- <li><a href="#" class="btn" id="about-getstarted-btn">Get Started</a></li> -->
+                            </ul>
+                        </nav>
+                    </header>
+
+                    <section class="about">
+                        <h2>About Let'sDO</h2>
+                        <p>Let'sDO was born out of a simple idea: task management should be as easy and natural as
+                            writing in a notebook. Our founder, a productivity enthusiast, was frustrated with overly
+                            complex to-do apps that got in the way of actually getting things done.</p>
+
+                        <p>We designed Let'sDO to be different. With its notebook-inspired interface, Let'sDO brings
+                            back the simplicity and satisfaction of crossing items off a paper list, while adding the
+                            convenience and power of digital technology.</p>
+
+                        <p>Our mission is to help you focus on what matters most. Whether you're managing daily chores,
+                            work projects, or life goals, Let'sDO keeps you organized without the overwhelm.</p>
+
+                        <h3>Our Team</h3>
+                        <p>We're a small but passionate group of designers, developers, and productivity nerds who
+                            believe that the right tools can make life better. We're constantly improving Let'sDO based
+                            on feedback from users like you.</p>
+                    </section>
+
+                    <footer>
+                        <div class="social-links">
+                            <a href="#"><i class="fab fa-twitter"></i></a>
+                            <a href="#"><i class="fab fa-facebook"></i></a>
+                            <a href="#"><i class="fab fa-instagram"></i></a>
+                            <a href="#"><i class="fab fa-linkedin"></i></a>
+                        </div>
+                        <p>&copy; 2023 Let'sDO. All rights reserved.</p>
+                    </footer>
+                </div>
+            </div>
+
+            <!-- Contact Page (hidden initially) -->
+            <div class="page" id="contact-page" style="display: none;">
+                <div class="page-content">
+                    <header>
+                        <div class="logo">Let's<span>DO</span></div>
+                        <nav>
+                            <ul>
+                                <li><a href="#" class="nav-link" data-page="home">Home</a></li>
+                                <li><a href="#" class="nav-link" data-page="about">About</a></li>
+                                <li><a href="#" class="nav-link" data-page="contact">Contact</a></li>
+                                <li><a href="#" class="btn btn-outline" id="contact-login-btn">Login</a></li>
+                                <!-- <li><a href="#" class="btn" id="contact-getstarted-btn">Get Started</a></li> -->
+                            </ul>
+                        </nav>
+                    </header>
+
+                    <section class="contact">
+                        <h2>Contact Us</h2>
+                        <p>Have questions, suggestions, or just want to say hello? We'd love to hear from you!</p>
+
+                        <div class="contact-form">
+                            <div class="form-group">
+                                <label for="name">Your Name</label>
+                                <input type="text" id="name" placeholder="John Doe">
+                            </div>
+                            <div class="form-group">
+                                <label for="email">Email Address</label>
+                                <input type="email" id="email" placeholder="you@example.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="message">Message</label>
+                                <textarea id="message" placeholder="Your message here..."></textarea>
+                            </div>
+                            <button class="btn">Send Message</button>
+                        </div>
+                    </section>
+
+                    <footer>
+                        <div class="social-links">
+                            <a href="#"><i class="fab fa-twitter"></i></a>
+                            <a href="#"><i class="fab fa-facebook"></i></a>
+                            <a href="#"><i class="fab fa-instagram"></i></a>
+                            <a href="#"><i class="fab fa-linkedin"></i></a>
+                        </div>
+                        <p>&copy; 2023 Let'sDO. All rights reserved.</p>
+                    </footer>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wallet Connection Modal -->
+    <div class="modal" id="auth-modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Connect Wallet</h2>
+            <div class="wallet-options">
+                <button class="wallet-btn" id="metamask-btn" onclick="connectMetamask()">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask">
+                    <span>MetaMask</span>
+                </button>
+
+                <div class="wallet-status" id="wallet-status">
+                    <p id="wallet-message">Connect your wallet to get started</p>
+                </div>
+
+                <div class="wallet-address" id="wallet-address" style="display: none;">
+                    <p>Connected: <span id="connected-address"></span></p>
+                    <button class="btn btn-outline" id="disconnect-btn" onclick="disconnectWallet()">Disconnect</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // Navigation between pages with flip effect
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                const targetPage = this.getAttribute('data-page');
+
+                // Get current and target pages
+                const currentPage = document.querySelector('.page:not([style*="display: none"])');
+                const targetPageElement = targetPage === 'home'
+                    ? document.getElementById('main-page')
+                    : document.getElementById(`${targetPage}-page`);
+
+                if (currentPage === targetPageElement) return;
+
+                // Store the exact height of the current page
+                const currentHeight = currentPage.offsetHeight;
+
+                // Set target page to same height and show it
+                targetPageElement.style.display = 'block';
+                targetPageElement.style.minHeight = `${currentHeight}px`;
+
+                // Start animations
+                currentPage.classList.add('flipping-out');
+                targetPageElement.classList.add('flipping-in');
+
+                // After animation completes
+                setTimeout(() => {
+                    currentPage.style.display = 'none';
+                    currentPage.classList.remove('flipping-out');
+                    targetPageElement.classList.remove('flipping-in');
+
+                    // Reset to auto height after transition
+                    setTimeout(() => {
+                        targetPageElement.style.minHeight = '';
+                    }, 100);
+                }, 800);
+            });
+        });
+
+        // Wallet Connection UI (without actual auth logic)
+        const authModal = document.getElementById('auth-modal');
+        const authButtons = document.querySelectorAll(
+            '#login-btn, #getstarted-btn, #hero-getstarted, #hero-login, ' +
+            '#about-login-btn, #about-getstarted-btn, ' +
+            '#contact-login-btn, #contact-getstarted-btn'
+        );
+        const closeModal = document.querySelector('.close-modal');
+
+        // Open auth modal
+        authButtons.forEach(btn => {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                authModal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            });
+        });
+
+        // Close modal
+        closeModal.addEventListener('click', function () {
+            authModal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        });
+
+        // Close modal when clicking outside
+        window.addEventListener('click', function (e) {
+            if (e.target === authModal) {
+                authModal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        });
+    </script>
+    <script type="module" src="auth.js"></script>
+</body>
+
+</html>
